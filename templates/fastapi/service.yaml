@@ -1,0 +1,16 @@
+{{- $name := "fastapi" }}
+{{- with .Values.fastapi -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+spec:
+  type: {{ .service.type }}
+  ports:
+  - port: {{ .service.externalPort }}
+    targetPort: {{ .service.internalPort }}
+    protocol: TCP
+    name: {{ $name }}
+  selector:
+    app: {{ $name }}
+{{- end }}

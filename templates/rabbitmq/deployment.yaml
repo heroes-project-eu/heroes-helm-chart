@@ -1,0 +1,76 @@
+{{- $Values := .Values -}}
+{{- $Release := .Release }}
+{{- range $i, $name := list "rabbitmqworkflow" "rabbitmqcluster"  }}
+{{- with ( get $Values $name ) }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  replicas: {{ .replicaCount | int }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+      - name: server
+        {{- with .image }}
+        image: "{{ $Values.registry.server }}/{{ .repository }}:{{ .tag }}"
+        imagePullPolicy: {{ .pullPolicy }} 
+        {{- end }}
+        {{- if .command }}
+        command:
+        {{ toYaml .command | nindent 10 }}   
+        {{- end }}
+        {{- if .args }}
+        args:
+        {{ toYaml .args | nindent 10 }}
+        {{- end }}
+        env:
+        # ExtraEnv
+        {{- range $key, $value := .extraEnv }}
+        - name: {{ $key | quote }}
+          value: {{ $value | quote }}
+        {{- end }}
+        ports:
+        - containerPort: {{ .service.internalPort | int }}
+        # Probes
+        {{- if .livenessProbe.enabled }}
+        livenessProbe:
+          tcpSocket:
+            port: {{ .service.internalPort | int }}
+        {{- end }}
+        {{- if .readinessProbe.enabled }}
+        readinessProbe:
+          tcpSocket:
+            port: {{ .service.internalPort | int }}
+        {{- end }}
+        {{- if .startupProbe.enabled }}
+        startupProbe:
+          tcpSocket:
+            port: {{ .service.internalPort | int }}
+          failureThreshold: 30
+          periodSeconds: 10
+        {{- end }}
+        # volumeMounts
+        volumeMounts:
+        - name: rabbitmq-init
+          mountPath: "/init"
+          readOnly: true
+        resources:
+{{ toYaml .resources | indent 10 }}
+      ## end of containers
+      imagePullSecrets:
+      - name: registry-credentials
+      volumes:
+      - name: rabbitmq-init
+        configMap:
+          name: rabbitmq-init
+{{- end }}
+{{- end }}

@@ -1,0 +1,31 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: fastapi-init
+data:
+  init.sh: |
+    echo "Settings .env file..."
+    cat <<EOF > {{ .Values.fastapi.dir }}/.env
+    NAMESPACE = ".{{ .Release.Namespace }}.svc.cluster.local"
+    OKA_NAMESPACE = "54.228.0.168"
+    OKA_USERNAME = "admin@ucit.fr"
+    OKA_PASSWORD = "admin"
+    PROTOCOL = "http"
+    FASTAPI_DIR = "{{ .Values.fastapi.dir }}"
+    DB_NAME = "${DB_NAME}"
+    DB_USER = "${DB_USER}"
+    DB_PASSWORD = "${DB_PASSWORD}"
+    DB_PORT = "${DB_PORT}"
+    DB_HOST = "${DB_HOST}"
+    DATABASE_URL = "${DB_HOST}"
+    SQLITE = "False"
+    EOF
+
+    cd {{ .Values.fastapi.dir }}
+
+    echo "Updating k8s namespace"
+    sed -i 's,settings.K8S_NAMESPACE,"{{ .Release.Namespace }}",g' /opt/fastapi/internal/heroes/organizations.py 
+
+    
+    echo "Starting the app..."
+    uvicorn main:app --host 0.0.0.0 --port {{ .Values.fastapi.service.internalPort }} --app-dir {{ .Values.fastapi.dir }} --reload

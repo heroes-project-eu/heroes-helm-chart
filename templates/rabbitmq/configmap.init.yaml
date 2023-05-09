@@ -1,0 +1,30 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: rabbitmq-init
+data:
+  init.sh: |
+    echo Start init script
+
+    /usr/sbin/rabbitmq-server &
+
+    echo "Waiting rabbitmq to be up and running..."
+    # retry for 24*5 = 120sec
+    curl --retry 24 --retry-connrefused --retry-delay 5 http://localhost:5672 --output -
+    echo "RabbitMQ service is up."
+
+    echo Add RabbitMQ use and password tuple
+    rabbitmqctl add_user 'heroes_fastapi' 'xxxx'
+    rabbitmqctl set_user_tags 'heroes_fastapi' administrator
+    rabbitmqctl set_permissions -p / heroes_fastapi ".*" ".*" ".*"
+
+    mkdir -pv /efs/work
+    mkdir ~/.ssh
+
+    echo Start RabbitMQ worker
+    python3.8 /opt/rabbitmq/worker/worker.py
+    worker_pid=$!
+    
+    wait $worker_pid
+    exit_pid=$?
+    exit $exit_pid

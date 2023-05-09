@@ -1,0 +1,23 @@
+{{- $Values := .Values -}}
+{{- if $Values.mailhog.enabled -}}
+{{- $name := "mailhog" }}
+{{- with .Values.mailhog -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8025
+    targetPort: 8025
+    protocol: TCP
+    name: {{ $name }}-http
+  - port: 1025
+    targetPort: 1025
+    protocol: TCP
+    name: {{ $name }}-smtp
+  selector:
+    app: {{ $name }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,338 @@
+# Default values for heroes-helm-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# gitlab.heroes-project.eu/:latest
+registry:
+  server: "gitlab.heroes-project.eu"
+
+networkpolicies:
+  enabled: false
+  k8s_api:
+    # run this command to get the ip: kubectl get endpoints --namespace default kubernetes
+    ips:
+    - ""
+    port: 6443
+
+### fastapi
+fastapi:
+  dir: "/opt/fastapi"
+  command: [ "bash" ]
+  args: [ "/init/init.sh" ]
+  externalDatabase:
+    host: postgresql-server
+    port: 5432
+    name: fastapi
+    user: fastapi
+    existingSecret: fastapi-password
+    existingSecretPasswordKey: db-password
+  replicaCount: 1
+  image:
+    repository: "heroes/heroes-mock-up/fastapi"
+    tag: "dev"
+    pullPolicy: "Always"
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 1Gi
+  service:
+    type: ClusterIP
+    externalPort: 8000
+    internalPort: 8000
+  livenessProbe:
+    enabled: true
+  readinessProbe:
+    enabled: true
+  ingress:
+    enabled: false
+    ingressClassName: "nginx"
+    annotations: {}
+    hosts:
+    - "fastapi.example.com"
+    tls: []
+  rabbitmq:
+    host: "rabbitmq-server"
+    port: "5762"
+    username: ""
+  extraEnv: {}
+
+
+
+keycloak:
+  fullnameOverride: "keycloak-server"
+  httpRelativePath: "/auth/"
+  enabled: true
+  auth:
+    existingSecret: keycloak-password
+    passwordSecretKey: admin-password
+  postgresql:
+    enabled: false
+  externalDatabase:
+    host: postgresql-server
+    user: keycloak
+    database: keycloak
+    existingSecret: keycloak-password
+    existingSecretPasswordKey: db-password
+  service:
+    type: ClusterIP
+    ports:
+      http: 8080
+  metrics:
+    enabled: true
+    port: 9187
+
+rabbitmq:
+  enabled: false
+  fullnameOverride: "rabbitmq-server"
+  auth:
+    username: user
+    existingPasswordSecret: rabbitmq-password
+    existingErlangSecret: rabbitmq-password
+
+mailhog:
+  enabled: false
+  image: mailhog/mailhog
+  resources: {}
+
+# create secret file "secret.yaml" with
+#   - base64 password
+#   - correct final secret name
+#   - correct final secret namespace 
+# and run
+#   cat secret.yaml | kubeseal -o yaml
+# copy encrypted value and add here
+sealed_secrets:
+  fastapi:
+    db_password: "overrided by values.env.yaml"
+  grafana:
+    user: "overrided by values.env.yaml"
+    password: "overrided by values.env.yaml"
+  keycloak:
+    admin_password: "overrided by values.env.yaml"
+    db_password: "overrided by values.env.yaml"
+  postgres:
+    password: "overrided by values.env.yaml"
+  rabbitmq:
+    erlang_cookie: "overrided by values.env.yaml"
+    password: "overrided by values.env.yaml"
+  registry_credentials: "overrided by values.env.yaml"
+
+### postgresql
+postgresql:
+  fullnameOverride: "postgresql-server"
+  auth:
+    existingSecret: "postgres-password"
+    database: fastapi
+  metrics:
+    enabled: false
+
+
+
+
+### Monitoring stack
+prometheus:
+  enabled: false
+  rbac:
+    create: true
+  server:
+    fullnameOverride: prometheus-server
+  prometheus-pushgateway:
+    enabled: false
+  kube-state-metrics:
+    enabled: true
+    rbac:
+      create: true
+    fullnameOverride: prometheus-kube-state-metrics
+  alertmanager:
+    enabled: false
+  prometheus-node-exporter:
+    enabled: true
+    fullnameOverride: prometheus-node-exporter
+
+grafana:
+  enabled: true
+  admin:
+    existingSecret: "grafana-password"
+  rbac:
+    create: false
+    pspEnabled: false
+  fullnameOverride: grafana
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: prometheus
+        type: prometheus
+        url: http://prometheus-server
+        access: proxy
+        isDefault: true
+      - name: loki
+        type: loki
+        url: http://grafana-loki-querier:3100
+        access: proxy
+        isDefault: false
+  persistence:
+    enabled: false
+    size: 5Gi
+  dashboards:
+    default:
+      postgresql:
+        gnetId: 9628
+        revision: 7
+        datasource: prometheus
+      nginx-ingress-controller:
+        gnetId: 9614
+        revision: 1
+        datasource: prometheus
+      logs:
+        gnetId: 13639
+        revision: 2
+        datasource: loki
+        
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+grafana-loki:
+  enabled: false
+  promtail:
+    rbac:
+      create: true
+  fullnameOverride: "grafana-loki"
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+
+
+
+rabbitmqcluster:
+  command: [ "bash" ]
+  args: [ "/init/init.sh" ]
+  replicaCount: 0
+  image:
+    repository: "heroes/heroes-mock-up/rabbitmq-cluster"
+    pullPolicy: "Always"
+    tag: "dev"
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  service:
+    name: rabbitmq-worker-cluster
+    type: ClusterIP
+    externalPort: 5672
+    internalPort: 5672
+  livenessProbe:
+    enabled: true
+  readinessProbe:
+    enabled: true
+  startupProbe:
+    enabled: true
+  extraEnv: {}
+
+
+rabbitmqworkflow:
+  command: [ "bash" ]
+  args: [ "/init/init.sh" ]
+  replicaCount: 1
+  image:
+    repository: "heroes/heroes-mock-up/rabbitmq-workflow"
+    pullPolicy: "Always"
+    tag: "dev"
+  resources:
+    limits:
+      cpu: "1"
+      memory: 2Gi
+    requests:
+      cpu: "1"
+      memory: 2Gi
+  service:
+    name: rabbitmq-worker-workflow
+    type: ClusterIP
+    externalPort: 5672
+    internalPort: 5672
+  livenessProbe:
+    enabled: true
+  readinessProbe:
+    enabled: true
+  startupProbe:
+    enabled: true
+  extraEnv: {}
+
+
+
+portal:
+  command: [ ]
+  args: [ ]
+  replicaCount: 1
+  ingress:
+    enabled: true
+    ingressClassName: "nginx"
+    annotations: {}
+    hosts:
+    - "portal.example.com"
+    tls: []
+  image:
+    repository: "heroes/heroes-portal"
+    pullPolicy: "Always"
+    tag: "main"
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  service:
+    type: ClusterIP
+    externalPort: 80
+    internalPort: 80
+  livenessProbe:
+    enabled: true
+  readinessProbe:
+    enabled: true
+  startupProbe:
+    enabled: true
+  extraEnv: {}

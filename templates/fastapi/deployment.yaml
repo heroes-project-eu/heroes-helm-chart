@@ -1,0 +1,105 @@
+{{- $Values := .Values -}}
+{{- $Release := .Release }}
+{{- $name := "fastapi" }}
+{{- with .Values.fastapi -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  replicas: {{ .replicaCount | int }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      serviceAccountName: fastapi
+      containers:
+      - name: {{ $name }}
+        {{- with .image }}
+        image: "{{ $Values.registry.server }}/{{ .repository }}:{{ .tag }}"
+        imagePullPolicy: {{ .pullPolicy }} 
+        {{- end }}
+       {{- if .command }}
+        command:
+        {{ toYaml .command | nindent 10 }}   
+        {{- end }}
+        {{- if .args }}
+        args:
+        {{ toYaml .args | nindent 10 }}
+        {{- end }}
+        env:
+        # PostgreSQL
+        {{- with .externalDatabase }}
+        - name: DB_HOST
+          value: {{ .host | quote }}
+        - name: DB_PORT
+          value: {{ .port | quote }}
+        - name: DB_NAME
+          value: {{ .name | quote  }}
+        - name: DB_USER
+          value: {{ .user | quote }}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .existingSecret }}
+              key: {{ .existingSecretPasswordKey }}
+              optional: false
+        {{- end }}
+        # RabbitMQ
+        - name: RABBITMQ_HOST
+          value: "rabbitmq-server"
+        - name: RABBITMQ_PORT
+          value: "5762"
+        - name: RABBITMQ_USERNAME
+          value: "user"
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $Values.rabbitmq.auth.existingPasswordSecret }}
+              key: rabbitmq-password
+              optional: false
+        # K8s Env
+        - name: K8S_IN_CLUSTER
+          value: "true"
+        - name: K8S_NAMESPACE
+          value: {{ $Release.Namespace }}
+        # ExtraEnv
+        {{- range $key, $value := .extraEnv }}
+        - name: {{ $key | quote }}
+          value: {{ $value | quote }}
+        {{- end }}
+        ports:
+        - containerPort: {{ .service.internalPort | int }}
+        {{- if .livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /docs
+            port: {{ .service.internalPort | int }}
+        {{- end }}
+        {{- if .readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: /docs
+            port: {{ .service.internalPort | int }}
+        {{- end }}
+        volumeMounts:
+        - name: fastapi-init
+          mountPath: "/init"
+          readOnly: true
+        resources:
+{{ toYaml .resources | indent 10 }}
+      ## end of containers
+      imagePullSecrets:
+      - name: registry-credentials
+      volumes:
+      - name: fastapi-init
+        configMap:
+          name: fastapi-init
+
+
+{{- end }}

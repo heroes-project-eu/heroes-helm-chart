@@ -1,0 +1,106 @@
+# helm upgrade --install -n heroes-test heroes-test . -f values.test.yaml
+
+
+
+
+networkpolicies:
+  enabled: false
+  k8s_api:
+    ips:
+    - "10.250.192.120"
+    - "10.250.194.21"
+    - "10.250.200.141"
+
+rabbitmqcluster:
+  image:
+    tag: "mergeDevK8S"
+
+rabbitmqworkflow:
+  image:
+    tag: "mergeDevK8S"
+
+fastapi:
+  image:
+    tag: "mergeDevK8S"
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      nginx.ingress.kubernetes.io/proxy-body-size: 5000m 
+      nginx.ingress.kubernetes.io/enable-cors: "false"
+      nginx.ingress.kubernetes.io/cors-allow-origin: https://portal.heroes-project.eu
+      nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+      nginx.ingress.kubernetes.io/limit-rps: "10"
+      nginx.ingress.kubernetes.io/modsecurity-snippet: |
+        SecRuleEngine On
+        SecRequestBodyAccess On
+        SecAuditEngine RelevantOnly
+        SecAuditLogParts ABIJDEFHZ
+        SecAuditLog /var/log/modsec_audit.log
+    hosts:
+    - api.heroes-project.eu
+    tls:
+    - hosts:
+      - api.heroes-project.eu
+      secretName: api-tls
+
+portal:
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+      nginx.ingress.kubernetes.io/limit-rps: "10"
+      nginx.ingress.kubernetes.io/modsecurity-snippet: |
+        SecRuleEngine On
+        SecRequestBodyAccess On
+        SecAuditEngine RelevantOnly
+        SecAuditLogParts ABIJDEFHZ
+        SecAuditLog /var/log/modsec_audit.log
+    hosts:
+    - portal.heroes-project.eu
+    tls:
+    - hosts:
+      - portal.heroes-project.eu
+      secretName: portal.heroes-project.eu-tls
+
+
+keycloak:
+  logging:
+    level: DEBUG
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: keycloak.heroes-project.eu
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+    tls: true
+
+sealed_secrets:
+  fastapi:
+    db_password: "AgA0Y2p7t1psjYu6igWfHIDlur/ALyRkZihDBFhHFNTogYhQJwMLrLQGgKUAaVAIadj1Qx1QEBwMBCcOls6at3KJdMFYWZ6fFBT5PMhxqoMNmmTcNncXJG9XAk+KV9nImKLHf3gp1mRPHAVXTOb/U6t6X8tjpPiasop/pMMMvEXT2+mJimMlAjqur9WQj6wG9eEGgLSO9e6XxMV1jdPIQwSgjsg7jbbwLYrcUinOlqr9xVbK6PVLtl6ADNd4Y6fljFtN47N15r4cl71b9TJnLwOifDbhapwh1RowxTRaerrWAbExAzop4dW6NtpSvIfbZ5rgAqtQYnQIyqFHmulHaXlIlipg2kK/UKfG6l39DyjC6o7eGNtuVV6oaM56vhzQ4iiQpeKfbyWTvN7L/AyfOPfcUp1BJJZhp9wDnYNDxzJBqSE4wzJkp/Tvtb4Ak0m0B5RuAct1WUMRrfsNK65XPhEek2uiv3JZRIhXzQvYdYDLD4nM7N9oStwkNG/awy6w+KSlkCt0fBj42KLFdjWkglZCorXYpNsokacmJsfqQiEQKBvdYtnVhXApDhnnAwABmadRiLLvdg0m99OUwTfaKFRQ8sr61fwycvlfMQGjXZfq8c1fRNKUcJEc5KC59rKFA/feQWsYBjb2sj/YZMBU0jAsm80buJIPJZ6lKH9JVcOBu7pE2waSc8+GncttA4vzKSge199Rctw6ozRo92forPD/KxmC+0ti7z+nTRzidqXYpA=="
+  grafana:
+    password: AgABDdg5HLuC5jtjlaHwazdbxXY5NbF+GJB79WEk4PL+7/JYic7jjlPEe1A4hRriUwSucxesCXHXYJfymWREzISY3UyxnkyFGyvrrzI8ezDBz6miqcAtBnJPacorZFtx50c4/Spb9Ngwz3TiO/Zm4Rhfex9L0dl9pJ5xK/g52tc4LdPDRl48ypYHLNwiknUDuRoDpZnQ86hm12Id3nJsYN6LHSBsra2CSx+sc+n631lSLfhJOsqxD6Gccs5B3dhweyw9HhwNnISxp/2hD4vJZq6TSvSp5kQ1pQlt7PaFEaZ5VoKMcMg7MTgkw3DXROLwuoChNgsyjwq76LAGfaGXbMN8xaVqQbOKlJQ0RRCoRGEyaAGNhsed3EP1wQjxlIH+9NWYDQAC4Li3DhAivIZtETVlAqwZ0hkKribeshXIPOxuSk+0BFymOPySzrygi6zojzxjCC6Q+AWs3Htdk1ewe083nUXLPIwPc3Gr8sHRhBd4Ke9EpGVwrO2BmIcly217d3dlL6oY2DCusNiWp+JXQzuFHEtmk+ics5jOq0rU+tkfwr+xZMG7+l3T1dehzurZMyaBsjnV/RWSenkc8Wu9BHvQc03b8LVINfUassIdI3pLetEe6jhCZspJyr9NwRrueLVI7GV4r+CLzg8KlEO+6FHToDsVG+EKE3RkGAF8TWSKESnfjObnAFugaV7TOimY4R9YLzywyOGbyUguHznzQKVkhVx1w4wr9HH7Y+SbFi6uNg==
+    user: AgAxEhwSnvtsDW3V2rNykcJYH3VqBguTzj4buBB/yKNcVZKDeZSVkZjCnTDu784wCzPn9j2D6X8yDaG1OTR/SuRHkFDEpslovVVsGChhiKnDz/WPuSubpYEd5oWwdpJ4JU5JNi6mBskxJCyqJHxcMU1aNDPU/J2gmvcMuCdi74US932K1DSPoR1jyqE00u+FnyVs59sBji/p63dOByoBR9BVtQCOrW1L0loIS8e8O1fad6gKHQp4YOnxFHjla8mvX+OYGgMixzJBMjl3AaV2YDmMNUeGiQPFPV9ZPwqyfdykpTfxOhQ74VP43JEsNmxdWd02uksshf8rITmwZeoX3ZEfJ7IdMernYMHE9SgLuadTj4gxnWMPM+fqL9rY/MNAveyE8C/tQ9KDEYgWf55G09m5U7gubOwHJy3PbUHWadC8s1oLjFlTEaEE7fYNFRtaZW13dTITliadR0ee63mtWl55nsAG4NyYOTKMo1ZZisTqSAbkebKLQic2OLffPfiqSuWUAOcQm1c4bdywtixjdFKjpepjg239o+J5voDYNHbBDtLxm/h3qG02WDLL1SPeXiX51JqdyWjmCTWCWkh+sPK5DHkUm/oLRMosHKkBjM6lUIn3Dqe4+okKwSBH+l+NmF9dWLG/Pn0dgJ3kLKUWMWBTJYXF581zkrg08sgbmO+N6V5hSvs2mPGOQNtQLKUigynokG7EYg==
+  keycloak:
+    admin_password: AgCMlXHTmtIDu7VB8jCfu1Lykk4tKH4Kr7s3ZctdJnC7r6BDKzpyHN82HJJxoWhk/0i9jVP35HjNwWX1WPAVfrfq1e/vzWRIpk/gOk3+XewolTBT0yynKhoV65D6h2tPDL0thNnHNHwvyuVk+/7wMeyJ0OTNuex8mUmNxpmpVItTTVVaWlAmucUeiP/6xBg0XmTzpn/4Y++85TaQ+nO8cmmy++A1OunTYDn/uL3MGJm7n193a6ulymi+6VAKllPilKEUbSv3fWtdTo6i/AgS+uc7jt9KLqKxXdQ2zCxqFPhVKy9RjCtSCssiGj6AvZCBwPCoGOfYSbbSiagytVt1wFElIWgkJrc06JG7b0PbQkWCk8NRrUETyCnuegPH84bqPT4O4WwQQzfHaROqmASVYOW1oQt/EO4ehF3UzJ6jBrVFcM2S3BnijXGNIlsOPJD4cowrd2fAHCjPiHvDKKWRzG/1pIoGPIN6uVYgc/B0kLipvIsgIStdYW7JSRlanPYrEKrw4BO+EOSo+M7w5E6j6vM4OZnT6QzR1a50ohQECEv7tCx+Cu2EoetmB0ZJ1vyv2N6MzGEWhxDcPAjAo6hCs3xgEQqe1bGvzQxWw+DaoWA9ZlTgzI8WbeBeAn0z09nmwEP9nmNlwm++nDM5x+BfeikqTfTXRUxNu2PHUO4l7c8rW2lq4pSRgBck1sW0AKMKdNLjWx/57M461K+ao5deLCMexDmBLN68Tk4xqjK2R+e6sw==
+    db_password: AgAOXOrqHX29ypmEdwEj+tst9CGcfr/N1WIXoqgEQWfKCpTI1wQyJzRKpruG+Tt0bMNfDBWNG2tuPZpPkyPUd03FNieV6ha6nWIeJJGWmyejynyqNKkweVlXlV84zSYB7B9TF9zN9a0HOkF8Qdmcx6Krfacj1YSF2wFRmqlUUykyKOhRSDLcLzMmQMjfF8OHUiUWbSNN2978PCWV3eBv1bxSNPbDEPHEyPF/s6ucxfSpZVst5a0JLe9bUaEWV9oPvkaV5MTuDFxqegBDoapQXZcP+cKB3LIq+k06RjKzBPzx9qJQ83AelmW1ikuAtunSApYR3kGdw5r/QbY8hQ3nl6FKpoWLmDfxwsvza0pUk5U5n9mOPJYS85CqNmQXQj6BH0N9fmDi/nqIubP8POAlms02Q3Ugm6MvPQyy7LhfO2/Io2ZeLutpN2Rgq3OqQNi1F+NQbIYyN9FVkjVx4MTq0zADNYwTAEnOH9gK//Th14A1yrNJPf6pm+vkzjx4WCUP7uduLDwb7UzBKXVoRtXavqyV2AWSxrnzIe4OH/tXcF/SWKEFZfN2Pzt6Vm1P1GIWKWXUKkBtnIF4CzIrlfIB0s+vZmF7dY4hgPB7pjS1Qy7lIvFxhRdHIg6EviyJtdpR61y2n4TOIfDguHrULqsnARGDqrPNITV8MxS8NKFFTbJcgYt9593yJyFtpAjA7An+P8UbuTh8rY8B9ZxEavooSPO2Sje6r5jlTT0WZrX6lITd7w==
+  postgres:
+    password: "AgC1JdWtjOg1mCuovuW6563CIwOzEjWz+ss++rOSeABoxq4h64QcUg69ufC4Zeqy/DTyJInKDBo5A65ITtKQ4SAdUuQP4X9VaJMUGpsreHIghcR9QRIIRPPO0tKgr+DgxUU5BDa+F/eVlTZLdClGdz9ze21AY9U5bz1hP6SYN2ySmS5dvj78diS5HnvSrAGnFZJwmjWjG0oKCsfUOmtC5XCyiGRLHuQgLDdBzKcFnjx4HWSkmWTLeAwAiq8kqsefLGcBQWsOGfib+Re+LHDut1h3eCQwpjJcOJfxQWLEPzaPiM5RrQeI1+h3ubOz8mjh5PF3jAHCy6eSZEvKAzPQfTSptEjDtKNjYltCU6XpiGPSP02J1XWnvHRRArlqLDh4TqdfvRYwCGkqHC6W0h0+1LgMSDshbo6bFmLXd3oMu+4msFqjAJYiZzIXnQ+iDW+6gzyw3S070ziPFoqzBlXOs2fcD2wMS5c5st5LF8CrjzG7ZfESN6BbUvD4g8VYt65T7Q5Z8lDhW6/nLkiCG+mAS7FX6i8ln+1nbnf20+nY7YgDjfyU4fA8GuTPAWi3ajpXuylgu/FtXC4xZQ370U2e6AMMsiyZ9rWHpZ0w+2CwmQpGiWhzkhZZzkNxhPSfXZuEZsM+lF6ROq8Na1Xu8zLTAngo2ppfmvyhbYr0n4EXtOTUO1yKmXfZSiYKHmEZh9wr4HJMNkML7VvVBtjlzngI0xcH"
+  rabbitmq:
+    erlang_cookie: AgBBH0+1wYsacGXr3p1zCjHd/2ZVCM1quUNpe9hX/gL3Im2XNO0fxAMPdksv2sN44GoOyLWMtQS9jPtKRfjld0WHO3SY1lK2iE6s5hni90ixW01ALk7MyZsH8uhq1eq37WQbUy8rRTC4BqvBT9qZ07PdHlOb2MD9LZkVhzZicG9dDY8fyKP+HTq/1FcJomXDuXuCHKZN1SRf/nfJqxIrrf5IB074qeio7iBTmCrBNu79VyOjR6xGdhcuz4RXG0y3PjXhHPLMdg8CI1G4Y9LGuKm1V1G8VZkJYYtM4Ue80LFlYAbwP6Y6OyUSe9u/kUz/zEEkCKYOPDnU+eaP9EYrvs+g3dk3lc4Hz9P7L8JWPpUnDRMnq5bLh0uaaUZr+Pb6aDBbhemxRTK5hxcfBDy8mh+H9MEPnDpvNOpYegAlTjPKf+g02+pDpyNmSkvkm989dJQmkK3ZsmVO6t9pLFoT2F7KDvdYlJFaHctPW0KDcHNrkvhcTztlhmfrxcK6VpEAz2JrP1jCbC/rFMPOdInaXxjtiZWrddTHdywzDkbONjRULqKJ0t37o1GnbNaEpTUa7vqSZx9qG2dXmVLydxyC/Dr1MS1uDJOloq8bGsQQREfw0b2mwcHEaQUdw4bjRmu2X0FeM9K3RDqADOFifrNT9QjaxpBKlIC+ARJ826ZscqnyPqH3AzRlDDJpd6tRzZrY8GkhtbeJ9fK7p4dnrbqur+AvdK7sywSzNeJYgS8g/r2c8A==
+    password: AgBrotlARKTIoOqWSfsqJAqes+XYheMzn8L2ijNcSqCsiyTQaSQTQFw9Tb4k8Ph8ytrFyRcO24JCkI51VIjTXZzkYLVWkwiS1A1Q1iG0aPH09KUlEHMHigMYi/+tpz1sx2Cu2xocn7BeXpfvVM02zwqnPhUCBtvFjXGYLCdBth79gA13E+1nJuJj097f5gC9VcByaKYZtN9tiIa/OknYomnyVjfZcFDlfb+a4/QOsHVnlGQMF8zW+zXwNHYVdXkWbfn4t7qQ05COnJUWvbS9aieUia9XF6V8jK1QUZurjjCDsyV6ebhnTeLxZ85Exnana8yyywze20CcMec2hYAqnTcRan9EtFSE2uOwUZl6VekS56ursbj++9fxl8x0bAfRMrM04TBdC9BR3op/GfSXoTh07nB6u2D+eVCUxf7LBRvxLx0hHh7wwJ2j2TcMqhF2cdj4585vmaUA+FgU3ydH0l4Gon4gFnytXIXhhMftrIC8NilagjHcT7AwNBZyt7TcgkXB44c6N8SYCym+PiqtTEUty8hww0hPx+yiDcHbNH3SooMvoiGPtVvDY3qhd/hTacJtlPN5dHji98UVq3aFqDmGPCLVViUqDEbo9NopQ/DFEqRO7D3fnLSvfS34e23Rz8DA6PKAGJVOyDL7xEbDSmsPzIcwo6CoMP8gPkme1MhDbamOeaa8SY9cVDdoR3bp3qkg1s23B5MSThwkWsxxQ0Kf/3JrdnI+YSHV+21g61eZ2w==
+  registry_credentials: "AgCJlvc32eQxjn+VKirFe3L+dQuI7bo7cRNjrmfZEiEBjBl77DSoL5rnQ39ofeM+6El8Dhp6ziWQKu8Y4XObHh0/OaVD3CCVRIaXtnM+0EG9gcNtMrS2BVsOewqggLpCM9YUBAtjmCW1UDTDZwITJXmxWcIju55n+1+LnsmHnM8AUXy6NjuGGVOQExm+HYjltVQvb1HKhg4ClHeFOidbb5aMOK+ohMkbKELOV6O9l8OqPb6/Abxaj6Uj0kNabfSsBWd5k6FCoiDmuA+EP7smz67Fue2e4y8v+SQFkRVeW+GxPRyqMsndCYsVYStgFqOC8rilLaGn0bQoa2+vlo2XVcjbuaI+zE0pOt7RC+ICw6tvuojFfsKib9Q/g36WOilWmTH6HsY3D/QyL4b/5vjyOmJg6B6Wz8X+oYBBRvDPOFKqL0tbyizaJ5ipdQIhFnh3RJbz3zO/Wmv846J+p04arRT5/qT3CfB09x1vxLgqSHiXimAWm4AxCSSInHxr8rdTgmwCBlp1xo/n2UTonOmOAcXehTypL9oNTXWwu0wCjPg6K3R5lYyuW8rNyvaEsdJy+x6PfOMEbcIJPOkll3KKAWCmiNxgYQfo/psmDutma9dHZv3qhrf99H5EgZmLjUgC56peHJWTpDneh6qW2lBSW0znal6Y9I3hQvOhPzcQW9eDkuhT8cNq2bFWHYpTgy8dNIfGT4pRFm6vIKHzuhlXjuo8PR92RtiW8VLZl4hIB2gk8kpFrZbM8lp9YZtcsLnVOVLJd4BsIEMyEIoPp7USTwdlVkwjhgqH0j1aHrgeOezSaX/giq4yrrbWRPr48KGqyA3eiazlZEZz4zdwVv6jO1c="
+
+grafana:
+  enabled: true
+
+postgresql:
+  metrics:
+    enabled: false
+
+prometheus:
+  enabled: true
+  
+grafana-loki:
+  enabled: true
